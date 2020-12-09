@@ -1,18 +1,14 @@
-from rest_framework import viewsets, permissions, filters
-from django_filters.rest_framework import DjangoFilterBackend
-
-from rest_framework import serializers
-
-from .models import Post, Comment, Follow, Group
-from .serializers import PostSerializer,\
-    CommentSerializer,\
-    FollowSerializer,\
-    GroupSerializer
-
-from django.shortcuts import get_object_or_404
-
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, permissions, filters
+from rest_framework.decorators import action
 
+from .models import Post, Follow, Group
+from .serializers import PostSerializer, \
+    CommentSerializer, \
+    FollowSerializer, \
+    GroupSerializer
 
 User = get_user_model()
 
@@ -47,15 +43,19 @@ class CommentViewSet(viewsets.ModelViewSet):
     )
 
     def get_queryset(self):
-        post = get_object_or_404(Post, id=self.kwargs['post_id'])
-        queryset = Comment.objects.filter(post=post)
-        return queryset
+        post_id = self.kwargs['post_id']
+        post = get_object_or_404(
+            Post.objects.prefetch_related('comments').all(),
+            id=post_id
+        )
+        return post.comments.all()
 
     def perform_create(self, serializer):
         post = get_object_or_404(Post, id=self.kwargs['post_id'])
         serializer.save(author=self.request.user, post=post)
 
 
+@action(detail=True, methods=['GET', 'POST'])
 class FollowViewSet(viewsets.ModelViewSet):
     serializer_class = FollowSerializer
     permission_classes = (permissions.IsAuthenticated, IsUserPermission)
@@ -73,17 +73,10 @@ class FollowViewSet(viewsets.ModelViewSet):
         following = User.objects.filter(
             username=self.request.data.get('following')
         )
-        if not following.exists():
-            raise serializers.ValidationError()
-        if Follow.objects.filter(
-                user=user, following=following.first()
-        ).exists():
-            raise serializers.ValidationError()
-        if self.request.user.username == self.request.data.get('following'):
-            raise serializers.ValidationError()
         serializer.save(user=user, following=following.first())
 
 
+@action(detail=True, methods=['GET', 'POST'])
 class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
