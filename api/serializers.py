@@ -45,8 +45,6 @@ class FollowSerializer(serializers.ModelSerializer):
         following = data['following']
         if user == following:
             raise serializers.ValidationError()
-        if Follow.objects.filter(user=user, following=following).exists():
-            raise serializers.ValidationError()
         return data
 
 
