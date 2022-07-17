@@ -14,4 +14,3 @@
 - создайте файл _.env_, где пропишите ключ для _settings.py_
 - создайте базу данных и выполните миграции `python manage.py makemigrations` `python manage.py migrate`
 - запустите сервер `python manage.py runserver`
-- 
